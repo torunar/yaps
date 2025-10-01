@@ -1,0 +1,197 @@
+#!/usr/bin/env php
+<?php
+
+use Torunar\Yaps\Deck\Enum\Rank;
+use Torunar\Yaps\Deck\Enum\State;
+use Torunar\Yaps\Deck\Enum\Suit;
+use Torunar\Yaps\Deck\Enum\SuitColor;
+use Torunar\Yaps\Deck\ValueObject\Card;
+use Torunar\Yaps\Deck\ValueObject\Stack;
+use Torunar\Yaps\Game\Factory\FieldFactory;
+
+const CURSOR_PANEL = -1;
+const CURSOR_TABLEU = 0;
+const CURSOR_HAND_STOCK_PILE = 0;
+const CURSOR_HAND_WASTE_PILE = 1;
+const CURSOR_FOUNDATION_CLUBS = 3;
+const CURSOR_FOUNDATION_DIAMONDS = 4;
+const CURSOR_FOUNDATION_HEARTS = 5;
+const CURSOR_FOUNDATION_SPADES = 6;
+
+require_once __DIR__ . '/../vendor/autoload.php';
+
+$field = (new FieldFactory())->getService()->initField();
+
+function renderCard(Card $card): string
+{
+    if (State::Closed === $card->state) {
+        return '░░░';
+    }
+
+    $buffer = sprintf(
+        '%2s',
+        match ($card->rank) {
+            Rank::Ace => ' A',
+            Rank::King => ' K',
+            Rank::Queen => ' Q',
+            Rank::Jack => ' J',
+            default => $card->rank->value
+        },
+    );
+    $buffer .= match ($card->suit) {
+        Suit::Clubs => '♣',
+        Suit::Diamonds => '♦',
+        Suit::Hearts => '♥',
+        Suit::Spades => '♠',
+    };
+    $color = match ($card->suit->getColor()) {
+        SuitColor::Red => 160,
+        SuitColor::Black => 0,
+    };
+
+    return "\e[38;5;{$color};48;5;231m{$buffer}\e[0m";
+}
+
+function waitForInput(): string
+{
+    $input = '';
+
+    $read = [STDIN];
+    $write = null;
+    $except = null;
+
+    readline_callback_handler_install('', function () { });
+
+    do {
+        $input .= fgetc(STDIN);
+    } while (stream_select($read, $write, $except, 0, 1));
+
+    readline_callback_handler_remove();
+
+    return $input;
+}
+
+$cursor = [
+    'column' => CURSOR_TABLEU,
+    'line' => CURSOR_TABLEU,
+];
+
+while (true) {
+    ob_start();
+
+    echo "\e[H\e[J";
+
+    echo $cursor['line'] === CURSOR_PANEL && $cursor['column'] === CURSOR_HAND_STOCK_PILE
+        ? '>'
+        : ' ';
+    echo $field->hand->stockPile->isEmpty()
+        ? '___'
+        : renderCard($field->hand->stockPile->cards[0]);
+    echo $cursor['line'] === CURSOR_PANEL && $cursor['column'] === CURSOR_HAND_WASTE_PILE
+        ? '>'
+        : ' ';
+    echo $field->hand->wastePile->isEmpty()
+        ? '___'
+        : renderCard($field->hand->wastePile->cards[0]);
+
+    echo '    ';
+
+    echo $cursor['line'] === CURSOR_PANEL && $cursor['column'] === CURSOR_FOUNDATION_CLUBS
+        ? '>'
+        : ' ';
+    echo $field->clubsFoundation->isEmpty()
+        ? '___'
+        : renderCard($field->clubsFoundation->cards[0]);
+    echo $cursor['line'] === CURSOR_PANEL && $cursor['column'] === CURSOR_FOUNDATION_DIAMONDS
+        ? '>'
+        : ' ';
+    echo $field->diamondsFoundation->isEmpty()
+        ? '___'
+        : renderCard($field->diamondsFoundation->cards[0]);
+    echo $cursor['line'] === CURSOR_PANEL && $cursor['column'] === CURSOR_FOUNDATION_HEARTS
+        ? '>'
+        : ' ';
+    echo $field->heartsFoundation->isEmpty()
+        ? '___'
+        : renderCard($field->heartsFoundation->cards[0]);
+    echo $cursor['line'] === CURSOR_PANEL && $cursor['column'] === CURSOR_FOUNDATION_SPADES
+        ? '>'
+        : ' ';
+    echo $field->spadesFoundation->isEmpty()
+        ? '___'
+        : renderCard($field->spadesFoundation->cards[0]);
+
+    echo "\n\n";
+
+    $columnLength = array_reduce(
+        $field->tableu,
+        fn(int $maxLength, Stack $stack): int => max($stack->getCardCount(), $maxLength),
+        0,
+    );
+
+    for ($cardIndex = 0; $cardIndex < $columnLength; $cardIndex++) {
+        for ($columnIndex = 0; $columnIndex < count($field->tableu); $columnIndex++) {
+            echo $cursor['column'] === $columnIndex && $cursor['line'] === $cardIndex
+                ? '>'
+                : ' ';
+            $card = $field->tableu[$columnIndex]->cards[$cardIndex] ?? null;
+            echo $card
+                ? renderCard($card)
+                : '   ';
+        }
+        echo PHP_EOL;
+    }
+
+    ob_end_flush();
+
+    $input = waitForInput();
+
+    switch ($input) {
+        case chr(27).chr(91).chr(65): // up
+            if ($cursor['line'] === CURSOR_TABLEU) {
+                $cursor['line'] = CURSOR_PANEL;
+                $cursor['column'] = CURSOR_HAND_STOCK_PILE;
+            } elseif ($cursor['line'] !== CURSOR_PANEL) {
+                $cursor['line'] = $cursor['line'] - 1;
+            }
+            break;
+        case chr(27).chr(91).chr(66): // down
+            if ($cursor['line'] === CURSOR_PANEL) {
+                $cursor['line'] = CURSOR_TABLEU;
+                $cursor['column'] = CURSOR_TABLEU;
+            } elseif ($cursor['line'] >= CURSOR_TABLEU) {
+                $cursor['line'] = isset($field->tableu[$cursor['column']]->cards[$cursor['line'] + 1])
+                    ? $cursor['line'] + 1
+                    : $field->tableu[$cursor['column']]->getCardCount() - 1;
+            }
+            break;
+        case chr(27).chr(91).chr(68): // left
+            if ($cursor['line'] === CURSOR_PANEL && $cursor['column'] === CURSOR_FOUNDATION_CLUBS) {
+                $cursor['column'] = CURSOR_HAND_WASTE_PILE;
+            } elseif ($cursor['line'] === CURSOR_PANEL && $cursor['column'] > CURSOR_HAND_STOCK_PILE) {
+                $cursor['column'] = $cursor['column'] - 1;
+            } elseif ($cursor['line'] !== CURSOR_PANEL && $cursor['column'] > CURSOR_TABLEU) {
+                $cursor['column'] = $cursor['column'] - 1;
+                $cursor['line'] = isset($field->tableu[$cursor['column']]->cards[$cursor['line']])
+                    ? $cursor['line']
+                    : $field->tableu[$cursor['column']]->getCardCount() - 1;
+            }
+            break;
+        case chr(27).chr(91).chr(67): // right
+            if ($cursor['line'] === CURSOR_PANEL && $cursor['column'] === CURSOR_HAND_WASTE_PILE) {
+                $cursor['column'] = CURSOR_FOUNDATION_CLUBS;
+            } elseif ($cursor['line'] === CURSOR_PANEL && $cursor['column'] < CURSOR_FOUNDATION_SPADES) {
+                $cursor['column'] = $cursor['column'] + 1;
+            } elseif ($cursor['column'] < count($field->tableu) - 1) {
+                $cursor['column'] = $cursor['column'] + 1;
+                $cursor['line'] = isset($field->tableu[$cursor['column']]->cards[$cursor['line']])
+                    ? $cursor['line']
+                    : $field->tableu[$cursor['column']]->getCardCount() - 1;
+            }
+            break;
+        case chr(27): // escape
+            break 2;
+    }
+}
+
+exit(0);
