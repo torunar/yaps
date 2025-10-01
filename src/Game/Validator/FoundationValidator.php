@@ -7,9 +7,9 @@ namespace Torunar\Yaps\Game\Validator;
 use Torunar\Yaps\Deck\Enum\Rank;
 use Torunar\Yaps\Deck\ValueObject\Card;
 
-readonly class DiscardActionValidator
+readonly class FoundationValidator
 {
-    public function canBeDiscardedOn(Card $topCard, ?Card $bottomCard = null): bool
+    public function canStack(Card $topCard, ?Card $bottomCard = null): bool
     {
         if (!$bottomCard) {
             return $topCard->rank === Rank::Ace;

@@ -10,34 +10,34 @@ use PHPUnit\Framework\TestCase;
 use Torunar\Yaps\Deck\Enum\Rank;
 use Torunar\Yaps\Deck\Enum\Suit;
 use Torunar\Yaps\Deck\ValueObject\Card;
-use Torunar\Yaps\Game\Validator\DiscardActionValidator;
+use Torunar\Yaps\Game\Validator\FoundationValidator;
 
-final class DiscardActionValidatorTest extends TestCase
+final class FoundationValidatorTest extends TestCase
 {
-    private DiscardActionValidator $validator;
+    private FoundationValidator $validator;
 
     protected function setUp(): void
     {
-        $this->validator = new DiscardActionValidator();
+        $this->validator = new FoundationValidator();
     }
 
-    #[DataProvider('getUndiscardableCards')]
-    public function testCanBeDiscardedOnWhenUndiscardable(Card $topCard, ?Card $bottomCard): void
+    #[DataProvider('getUnstackableCards')]
+    public function testCanStackWhenUnstackable(Card $topCard, ?Card $bottomCard): void
     {
         $this->assertFalse(
-            $this->validator->canBeDiscardedOn($topCard, $bottomCard),
+            $this->validator->canStack($topCard, $bottomCard),
         );
     }
 
-    #[DataProvider('getDiscardableCards')]
-    public function testCanBeDiscardedOnWhenDiscardable(Card $topCard, ?Card $bottomCard): void
+    #[DataProvider('getStackableCards')]
+    public function testCanStackWhenStackable(Card $topCard, ?Card $bottomCard): void
     {
         $this->assertTrue(
-            $this->validator->canBeDiscardedOn($topCard, $bottomCard),
+            $this->validator->canStack($topCard, $bottomCard),
         );
     }
 
-    public static function getUndiscardableCards(): Generator
+    public static function getUnstackableCards(): Generator
     {
         yield 'non-ace on empty spot' => [new Card(Suit::Clubs, Rank::Two), null];
         yield 'different suits' => [new Card(Suit::Clubs, Rank::Two), new Card(Suit::Spades, Rank::Ace)];
@@ -45,7 +45,7 @@ final class DiscardActionValidatorTest extends TestCase
         yield 'non-consecutive rank' => [new Card(Suit::Clubs, Rank::Four), new Card(Suit::Clubs, Rank::Two)];
     }
 
-    public static function getDiscardableCards(): Generator
+    public static function getStackableCards(): Generator
     {
         yield [new Card(Suit::Clubs, Rank::Ace), null];
         yield [new Card(Suit::Clubs, Rank::Two), new Card(Suit::Clubs, Rank::Ace)];

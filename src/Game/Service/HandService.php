@@ -15,15 +15,15 @@ readonly class HandService
     ) {
     }
 
-    public function revealNextCard(Hand $talon): Hand
+    public function revealNextCard(Hand $hand): Hand
     {
-        if ($talon->stockPile->isEmpty()) {
-            return $this->rebuildTalon($talon);
+        if ($hand->stockPile->isEmpty()) {
+            return $this->rebuild($hand);
         }
 
-        $drawnCard = $this->stackService->getTopCard($talon->stockPile);
-        $newStockPile = $this->stackService->getSubstackWithoutTopCard($talon->stockPile);
-        $newWastePile = new Stack(...[...$talon->wastePile->cards, $drawnCard]);
+        $drawnCard = $this->stackService->getTopCard($hand->stockPile);
+        $newStockPile = $this->stackService->getSubstackWithoutTopCard($hand->stockPile);
+        $newWastePile = new Stack(...[...$hand->wastePile->cards, $drawnCard]);
 
         return new Hand(
             $newStockPile,
@@ -31,18 +31,18 @@ readonly class HandService
         );
     }
 
-    public function takeOutCard(Hand $talon): Hand
+    public function takeOutCard(Hand $hand): Hand
     {
         return new Hand(
-            $talon->stockPile,
-            $this->stackService->getSubstackWithoutTopCard($talon->wastePile),
+            $hand->stockPile,
+            $this->stackService->getSubstackWithoutTopCard($hand->wastePile),
         );
     }
 
-    private function rebuildTalon(Hand $talon): Hand
+    private function rebuild(Hand $hand): Hand
     {
         return new Hand(
-            new Stack(...array_reverse($talon->wastePile->cards)),
+            new Stack(...array_reverse($hand->wastePile->cards)),
             new Stack(),
         );
     }
