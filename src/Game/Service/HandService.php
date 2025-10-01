@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Torunar\Yaps\Game\Service;
 
 use Torunar\Yaps\Deck\Service\StackService;
+use Torunar\Yaps\Deck\ValueObject\Card;
 use Torunar\Yaps\Deck\ValueObject\Stack;
 use Torunar\Yaps\Game\ValueObject\Hand;
 
@@ -21,9 +22,9 @@ readonly class HandService
             return $this->rebuild($hand);
         }
 
-        $drawnCard = $this->stackService->getTopCard($hand->stockPile);
+        $drawnCard = $this->stackService->getTopCard($hand->stockPile)->getOpen();
         $newStockPile = $this->stackService->getSubstackWithoutTopCard($hand->stockPile);
-        $newWastePile = new Stack(...[...$hand->wastePile->cards, $drawnCard]);
+        $newWastePile = $this->stackService->addCard($hand->wastePile, $drawnCard);
 
         return new Hand(
             $newStockPile,
@@ -42,7 +43,14 @@ readonly class HandService
     private function rebuild(Hand $hand): Hand
     {
         return new Hand(
-            new Stack(...array_reverse($hand->wastePile->cards)),
+            new Stack(
+                ...array_reverse(
+                    array_map(
+                        fn(Card $card): Card => $card->getClosed(),
+                        $hand->wastePile->cards,
+                    ),
+                ),
+            ),
             new Stack(),
         );
     }

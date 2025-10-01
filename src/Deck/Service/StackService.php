@@ -68,4 +68,9 @@ readonly class StackService
 
         return new Stack(...array_slice($stack->cards, 0, $stack->getCardCount() - 1));
     }
+
+    public function addCard(Stack $stack, Card $card): Stack
+    {
+        return new Stack(...[...$stack->cards, $card]);
+    }
 }
