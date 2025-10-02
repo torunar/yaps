@@ -174,7 +174,7 @@ while (true) {
                 $cursor['column'] = $cursor['column'] - 1;
                 $cursor['line'] = isset($field->tableu[$cursor['column']]->cards[$cursor['line']])
                     ? $cursor['line']
-                    : $field->tableu[$cursor['column']]->getCardCount() - 1;
+                    : max(CURSOR_TABLEU, $field->tableu[$cursor['column']]->getCardCount() - 1);
             }
             break;
         case chr(27).chr(91).chr(67): // right
@@ -186,7 +186,7 @@ while (true) {
                 $cursor['column'] = $cursor['column'] + 1;
                 $cursor['line'] = isset($field->tableu[$cursor['column']]->cards[$cursor['line']])
                     ? $cursor['line']
-                    : $field->tableu[$cursor['column']]->getCardCount() - 1;
+                    : max(CURSOR_TABLEU, $field->tableu[$cursor['column']]->getCardCount() - 1);
             }
             break;
         case chr(27): // escape

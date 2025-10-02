@@ -31,6 +31,10 @@ readonly class StackService
         return $cards[$n];
     }
 
+    /**
+     * @throws GetCardFromStackException
+     * @throws StackCardIndexException
+     */
     public function getTopCard(Stack $stack): Card
     {
         return $this->getNthFromTail($stack, 0);
