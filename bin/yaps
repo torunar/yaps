@@ -6,7 +6,6 @@ use Torunar\Yaps\Deck\Enum\State;
 use Torunar\Yaps\Deck\Enum\Suit;
 use Torunar\Yaps\Deck\Enum\SuitColor;
 use Torunar\Yaps\Deck\ValueObject\Card;
-use Torunar\Yaps\Deck\ValueObject\Stack;
 use Torunar\Yaps\Game\Factory\FieldFactory;
 
 const CURSOR_PANEL = -1;
@@ -17,6 +16,7 @@ const CURSOR_FOUNDATION_CLUBS = 3;
 const CURSOR_FOUNDATION_DIAMONDS = 4;
 const CURSOR_FOUNDATION_HEARTS = 5;
 const CURSOR_FOUNDATION_SPADES = 6;
+const TABLEU_HEIGHT = 20;
 
 require_once __DIR__ . '/../vendor/autoload.php';
 
@@ -123,18 +123,20 @@ while (true) {
 
     echo "\n\n";
 
-    $columnLength = array_reduce(
-        $field->tableu,
-        fn(int $maxLength, Stack $stack): int => max($stack->getCardCount(), $maxLength),
-        0,
-    );
-
-    for ($cardIndex = 0; $cardIndex < $columnLength; $cardIndex++) {
+    for ($cardIndex = 0; $cardIndex < TABLEU_HEIGHT; $cardIndex++) {
         for ($columnIndex = 0; $columnIndex < count($field->tableu); $columnIndex++) {
             echo $cursor['column'] === $columnIndex && $cursor['line'] === $cardIndex
                 ? '>'
                 : ' ';
             $card = $field->tableu[$columnIndex]->cards[$cardIndex] ?? null;
+            if (
+                !$card
+                && $columnIndex === $field->detachedStack->tableuColumnIndex
+                && $cardIndex > $field->tableu[$columnIndex]->getCardCount()
+            ) {
+                $card = $field->detachedStack->stack->cards[$cardIndex - $field->tableu[$columnIndex]->getCardCount() - 1] ?? null;
+            }
+
             echo $card
                 ? renderCard($card)
                 : '   ';
@@ -152,7 +154,22 @@ while (true) {
                 $cursor['line'] = CURSOR_PANEL;
                 $cursor['column'] = CURSOR_HAND_STOCK_PILE;
             } elseif ($cursor['line'] !== CURSOR_PANEL) {
-                $cursor['line'] = $cursor['line'] - 1;
+                $line = $cursor['line'] - 1;
+                $detachedCardIndex = max(CURSOR_TABLEU, $line - $field->tableu[$cursor['column']]->getCardCount());
+
+                $tableuCardExists = isset($field->tableu[$cursor['column']]->cards[$line]);
+                $detachedCardExists =
+                    $cursor['column'] === $field->detachedStack->tableuColumnIndex
+                    && $line >= $field->tableu[$cursor['column']]->getCardCount()
+                    && isset($field->detachedStack->stack->cards[$detachedCardIndex]);
+
+                if ($detachedCardExists && $detachedCardIndex === CURSOR_TABLEU) {
+                    $line = $line - 1;
+                }
+
+                $cursor['line'] = $tableuCardExists || $detachedCardExists
+                    ? $line
+                    : $field->tableu[$cursor['column']]->getCardCount() - 1;
             }
             break;
         case chr(27).chr(91).chr(66): // down
@@ -160,8 +177,21 @@ while (true) {
                 $cursor['line'] = CURSOR_TABLEU;
                 $cursor['column'] = CURSOR_TABLEU;
             } elseif ($cursor['line'] >= CURSOR_TABLEU) {
-                $cursor['line'] = isset($field->tableu[$cursor['column']]->cards[$cursor['line'] + 1])
-                    ? $cursor['line'] + 1
+                $line = $cursor['line'] + 1;
+                $detachedCardIndex = max(CURSOR_TABLEU, $line - $field->tableu[$cursor['column']]->getCardCount() - 1);
+
+                $tableuCardExists = isset($field->tableu[$cursor['column']]->cards[$line]);
+                $detachedCardExists =
+                    $cursor['column'] === $field->detachedStack->tableuColumnIndex
+                    && $line >= $field->tableu[$cursor['column']]->getCardCount()
+                    && isset($field->detachedStack->stack->cards[$detachedCardIndex]);
+
+                if ($detachedCardExists && $detachedCardIndex === CURSOR_TABLEU) {
+                    $line = $line + 1;
+                }
+
+                $cursor['line'] = $tableuCardExists || $detachedCardExists
+                    ? $line
                     : $field->tableu[$cursor['column']]->getCardCount() - 1;
             }
             break;
@@ -190,6 +220,7 @@ while (true) {
             }
             break;
         case chr(27): // escape
+        case 'q':
             break 2;
     }
 }

@@ -16,6 +16,7 @@ readonly class Field
         public Stack $spadesFoundation,
         /** @var Stack[] */
         public array $tableu,
+        public DetachedStack $detachedStack,
     ) {
     }
 }

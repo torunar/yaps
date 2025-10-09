@@ -17,6 +17,7 @@ use Torunar\Yaps\Deck\Enum\Suit;
 use Torunar\Yaps\Deck\Exception\GetCardFromStackException;
 use Torunar\Yaps\Deck\Service\StackService;
 use Torunar\Yaps\Deck\ValueObject\Stack;
+use Torunar\Yaps\Game\ValueObject\DetachedStack;
 use Torunar\Yaps\Game\ValueObject\Field;
 use Torunar\Yaps\Game\ValueObject\Hand;
 
@@ -85,6 +86,7 @@ readonly class FieldService
             diamondsFoundation: $diamondsFoundation,
             spadesFoundation: $spadesFoundation,
             tableu: $tableu,
+            detachedStack: new DetachedStack(0, new Stack()),
         );
     }
 }
