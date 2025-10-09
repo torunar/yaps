@@ -13,6 +13,19 @@ use Torunar\Yaps\Deck\ValueObject\Stack;
 
 readonly class StackService
 {
+    public function getNthFromTop(Stack $stack, int $n): Card
+    {
+        if ($n < 0) {
+            throw new StackCardIndexException();
+        }
+
+        if (!isset($stack->cards[$n])) {
+            throw new GetCardFromStackException();
+        }
+
+        return $stack->cards[$n];
+    }
+
     /**
      * @throws GetCardFromStackException
      * @throws StackCardIndexException
